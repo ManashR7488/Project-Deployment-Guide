@@ -13,7 +13,8 @@ This README outlines the steps to launch an AWS EC2 instance, secure SSH access,
 7. [Kill Processes on a Port](#kill-processes-on-a-port)
 8. [Manage Your App with PM2](#manage-your-app-with-pm2)
 9. [Enable HTTPS with NGINX & Certbot](#enable-https-with-nginx--certbot)
-10. [Further Steps](#further-steps)
+10. [CI-CD Deployment with GitHub Actions](#ci-cd-deployment-with-github-actions)
+11. [Further Steps](#further-steps)
 
 ---
 
@@ -295,6 +296,150 @@ sudo systemctl restart nginx
 You can now visit `https://your_server_ip` with a browser warning (self-signed cert).
 
 ---
+
+<a name="ci-cd-deployment-with-github-actions"></a>
+
+## ⚙️ CI/CD Deployment with GitHub Actions and EC2
+
+This project uses a secure and automated CI/CD pipeline using **GitHub Actions** to deploy to an **AWS EC2** instance on every push to the `main` branch.
+
+---
+
+### 🔐 Step 1: Generate SSH Key Pair (on your local machine)
+
+Run this command in your local terminal (not inside EC2):
+
+```bash
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+```
+
+* When prompted for file name, type:
+
+  ```
+  ec2-deploy-key
+  ```
+* Two files will be created:
+
+  * `ec2-deploy-key` (this is your **private key**)
+  * `ec2-deploy-key.pub` (this is your **public key**)
+* Do **NOT** set a passphrase when asked.
+
+---
+
+### 📋 Step 2: Add Public Key to EC2 Instance
+
+1. SSH into your EC2:
+
+```bash
+ssh -i your-original-key.pem ubuntu@<your-ec2-ip>
+```
+
+2. On your EC2 machine, run:
+
+```bash
+mkdir -p ~/.ssh
+nano ~/.ssh/authorized_keys
+```
+
+3. Paste the **content of `ec2-deploy-key.pub`** here and save.
+
+4. Set permissions:
+
+```bash
+chmod 600 ~/.ssh/authorized_keys
+```
+
+---
+
+### 🔑 Step 3: Add Private Key to GitHub Secrets
+
+In your GitHub repository:
+
+1. Go to **Settings → Secrets → Actions**
+2. Add the following secrets:
+
+| Secret Name   | Value                                      |
+| ------------- | ------------------------------------------ |
+| `EC2_SSH_KEY` | Contents of `ec2-deploy-key` (private key) |
+| `EC2_USER`    | `ubuntu`                                   |
+| `EC2_HOST`    | Your EC2 instance public IP                |
+| `TARGET_DIR`  | e.g., `/home/ubuntu/code/myJSON`           |
+
+---
+
+### ⚙️ Step 4: Setup GitHub Actions Workflow
+
+Create the file: `.github/workflows/deploy.yml`
+
+```yaml
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "$EC2_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 400 ~/.ssh/id_rsa
+          ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2 Server
+        run: |
+          ssh $EC2_USER@$EC2_HOST << 'EOF'
+            cd $TARGET_DIR
+            git pull origin main
+            npm install
+            pm2 restart all || pm2 start index.js --name myjson-api
+          EOF
+```
+
+---
+
+### ✅ Step 5: Push the Workflow to GitHub
+
+Once you have created or edited the `deploy.yml` file, push it to your repository:
+
+```bash
+git add .github/workflows/deploy.yml
+git commit -m "Add CI/CD deployment workflow"
+git push origin main
+```
+
+Now your CI/CD pipeline is fully functional and will trigger on every push to the `main` branch.
+
+---
+
+### ✅ CI/CD in Action
+
+Whenever you push to the `main` branch, GitHub Actions will:
+
+* Connect to your EC2 using SSH
+* Pull the latest code
+* Install dependencies
+* Restart the app with PM2
+
+To check logs:
+
+* Go to **GitHub → Actions Tab** in your repo
+
+To verify deployment:
+
+* Visit: `http://<your-ec2-ip>:3000`
+
+---
+
+
 
 <a name="further-steps"></a>
 
