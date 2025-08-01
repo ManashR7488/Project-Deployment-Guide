@@ -14,7 +14,6 @@ This README outlines the steps to launch an AWS EC2 instance, secure SSH access,
 8. [Manage Your App with PM2](#manage-your-app-with-pm2)
 9. [Enable HTTPS with NGINX & Certbot](#enable-https-with-nginx--certbot)
 10. [CI-CD Deployment with GitHub Actions](#ci-cd-deployment-with-github-actions)
-11. [Further Steps](#further-steps)
 
 ---
 
@@ -363,7 +362,7 @@ In your GitHub repository:
 | `EC2_SSH_KEY` | Contents of `ec2-deploy-key` (private key) |
 | `EC2_USER`    | `ubuntu`                                   |
 | `EC2_HOST`    | Your EC2 instance public IP                |
-| `TARGET_DIR`  | e.g., `/home/ubuntu/code/myJSON`           |
+| `TARGET_DIR`  | e.g., `/home/ubuntu/code/projectRepo`           |
 
 ---
 
@@ -390,17 +389,17 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "$EC2_SSH_KEY" > ~/.ssh/id_rsa
-          chmod 400 ~/.ssh/id_rsa
-          ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2-deploy-key
+          chmod 400 ~/.ssh/ec2-deploy-key
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to EC2 Server
         run: |
-          ssh $EC2_USER@$EC2_HOST << 'EOF'
-            cd $TARGET_DIR
+          ssh -i ~/.ssh/ec2-deploy-key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            cd ${{ secrets.TARGET_DIR }}
             git pull origin main
             npm install
-            pm2 restart all || pm2 start index.js --name myjson-api
+            pm2 restart all || pm2 start index.js --name nameOfServive
           EOF
 ```
 
@@ -440,16 +439,5 @@ To verify deployment:
 ---
 
 
-
-<a name="further-steps"></a>
-
-### 📖 Further Steps
-
-* **Secure Server**: Disable password auth, configure UFW.
-* **Reverse Proxy**: Configure NGINX for HTTPS and load balancing.
-* **Domain Setup**: Point your domain and obtain SSL via Let's Encrypt.
-* **CI/CD**: Automate deployments with GitHub Actions or other tools.
-
----
 
 *Happy Deploying!* 🚀
