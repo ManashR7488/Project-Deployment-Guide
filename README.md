@@ -12,7 +12,8 @@ This README outlines the steps to launch an AWS EC2 instance, secure SSH access,
 6. [Clone Your Repository](#clone-your-repository)
 7. [Kill Processes on a Port](#kill-processes-on-a-port)
 8. [Manage Your App with PM2](#manage-your-app-with-pm2)
-9. [Further Steps](#further-steps)
+9. [Enable HTTPS with NGINX & Certbot](#enable-https-with-nginx--certbot)
+10. [Further Steps](#further-steps)
 
 ---
 
@@ -168,6 +169,130 @@ sudo kill -9 $(sudo lsof -t -i:3000)
    pm2 stop my-app                    # Stop the app
    pm2 delete my-app                  # Remove from PM2 list
    ```
+
+---
+
+<a name="enable-https-with-nginx--certbot"></a>
+
+## Enable HTTPS with NGINX & Certbot
+
+### A. For Domain (Let’s Encrypt SSL)
+
+#### 1. Install NGINX
+
+```sh
+sudo apt install -y nginx
+```
+
+#### 2. Allow HTTPS in UFW
+
+```sh
+sudo ufw allow 'Nginx Full'
+```
+
+#### 3. Configure NGINX Reverse Proxy
+
+```sh
+sudo nano /etc/nginx/sites-available/myapp
+```
+
+Paste the following (replace `yourdomain.com`):
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+Then enable:
+
+```sh
+sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+#### 4. Install Certbot & Get SSL
+
+```sh
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d yourdomain.com
+```
+
+#### 5. SSL Auto-Renewal (Default)
+
+Certbot adds auto-renewal via cron. You can verify:
+
+```sh
+sudo certbot renew --dry-run
+```
+
+---
+
+### B. For IP Address (Self-Signed SSL)
+
+Since Let’s Encrypt does not issue certificates for IPs:
+
+#### 1. Generate Self-Signed Cert
+
+```sh
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout /etc/ssl/private/nginx-selfsigned.key \
+  -out /etc/ssl/certs/nginx-selfsigned.crt
+```
+
+#### 2. Create NGINX Config
+
+```sh
+sudo nano /etc/nginx/sites-available/myapp
+```
+
+Paste:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name your_server_ip;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+server {
+    listen 80;
+    server_name your_server_ip;
+    return 301 https://$host$request_uri;
+}
+```
+
+Enable & restart:
+
+```sh
+sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+You can now visit `https://your_server_ip` with a browser warning (self-signed cert).
 
 ---
 
