@@ -4,15 +4,15 @@ This README outlines the steps to launch an AWS EC2 instance, secure SSH access,
 
 ### 📑 Table of Contents
 
-1. [🔹 Prerequisites](#prerequisites)
-2. [🚀 Launch an EC2 Instance](#launch-an-ec2-instance)
-3. [🔒 Secure Your SSH Key (Windows)](#secure-your-ssh-key-windows)
-4. [🔄 Update & Upgrade Server Packages](#update--upgrade-server-packages)
-5. [🛠️ Install Node.js (LTS)](#install-nodejs-lts)
-6. [📥 Clone Your Repository](#clone-your-repository)
-7. [🗑️ Kill Processes on a Port](#kill-processes-on-a-port)
-8. [⚙️ Manage Your App with PM2](#manage-your-app-with-pm2)
-9. [📖 Further Steps](#further-steps)
+1. [Prerequisites](#prerequisites)
+2. [Launch an EC2 Instance](#launch-an-ec2-instance)
+3. [Secure Your SSH Key (Windows)](#secure-your-ssh-key-windows)
+4. [Update & Upgrade Server Packages](#update--upgrade-server-packages)
+5. [Install Node.js (LTS)](#install-nodejs-lts)
+6. [Clone Your Repository](#clone-your-repository)
+7. [Kill Processes on a Port](#kill-processes-on-a-port)
+8. [Manage Your App with PM2](#manage-your-app-with-pm2)
+9. [Further Steps](#further-steps)
 
 ---
 
