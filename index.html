@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth" data-color-scheme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Deployment Guide - AWS EC2 Ubuntu Setup</title>
+    <meta name="description" content="Complete guide for deploying Node.js applications on AWS EC2 with Ubuntu, NGINX, PM2, and GitHub Actions CI/CD">
+    <meta name="keywords" content="AWS, EC2, Ubuntu, Node.js, deployment, NGINX, PM2, GitHub Actions">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header Navigation -->
+    <nav id="nav" class="fixed top-0 w-full bg-gray-800/95 backdrop-blur-sm border-b border-gray-700 z-50 transition-colors duration-300">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-xl font-bold text-teal-400">🚀 Deployment Guide</h1>
+                </div>
+                
+                <!-- Desktop Navigation -->
+                <div class="hidden md:block">
+                    <div class="flex items-center space-x-6">
+                        <a href="#hero" class="nav-link transition-colors">Home</a>
+                        <a href="#prerequisites" class="nav-link transition-colors">Prerequisites</a>
+                        <a href="#launch-ec2" class="nav-link transition-colors">EC2 Setup</a>
+                        <a href="#troubleshooting" class="nav-link transition-colors">Troubleshooting</a>
+                        
+                        <!-- GitHub Link -->
+                        <a href="https://github.com/YourUsername/Project-Deployment-Guide" target="_blank" class="flex items-center space-x-2 text-gray-300 hover:text-teal-400 transition-colors" aria-label="View on GitHub">
+                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                            <span>GitHub</span>
+                        </a>
+                        
+                        <!-- Theme Toggle -->
+                        <button id="theme-toggle" class="flex items-center space-x-2 px-3 py-1 rounded-md border border-gray-600 hover:border-teal-500 transition-all duration-200" aria-label="Toggle theme">
+                            <svg id="theme-icon-dark" class="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 2L13.09 8.26L20 9L14 14.74L15.18 21.02L10 17.77L4.82 21.02L6 14.74L0 9L6.91 8.26L10 2Z"/>
+                            </svg>
+                            <svg id="theme-icon-light" class="h-4 w-4 text-gray-800 hidden" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+                            </svg>
+                            <span id="theme-text" class="text-sm">Light</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mobile menu button -->
+                <div class="md:hidden flex items-center space-x-2">
+                    <!-- Mobile Theme Toggle -->
+                    <button id="mobile-theme-toggle" class="p-2 rounded-md border border-gray-600 hover:border-teal-500 transition-colors" aria-label="Toggle theme">
+                        <svg id="mobile-theme-icon-dark" class="h-4 w-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 2L13.09 8.26L20 9L14 14.74L15.18 21.02L10 17.77L4.82 21.02L6 14.74L0 9L6.91 8.26L10 2Z"/>
+                        </svg>
+                        <svg id="mobile-theme-icon-light" class="h-4 w-4 text-gray-800 hidden" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+                        </svg>
+                    </button>
+                    
+                    <button id="mobile-menu-button" class="text-gray-300 hover:text-teal-400 focus:outline-none transition-colors">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-gray-800 border-t border-gray-700 transition-colors duration-300">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <a href="#hero" class="block px-3 py-2 text-gray-300 hover:text-teal-400 transition-colors">Home</a>
+                <a href="#prerequisites" class="block px-3 py-2 text-gray-300 hover:text-teal-400 transition-colors">Prerequisites</a>
+                <a href="#launch-ec2" class="block px-3 py-2 text-gray-300 hover:text-teal-400 transition-colors">EC2 Setup</a>
+                <a href="#troubleshooting" class="block px-3 py-2 text-gray-300 hover:text-teal-400 transition-colors">Troubleshooting</a>
+                <a href="https://github.com/YourUsername/Project-Deployment-Guide" target="_blank" class="flex items-center space-x-2 px-3 py-2 text-gray-300 hover:text-teal-400 transition-colors">
+                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    <span>GitHub</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-16 transition-colors duration-300">
+        <!-- Hero Section -->
+        <section id="hero" class="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-20 transition-colors duration-300">
+            <div class="container mx-auto px-4 text-center">
+                <div class="max-w-4xl mx-auto">
+                    <h1 class="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-teal-400 to-blue-500 bg-clip-text text-transparent">
+                        Project Deployment Guide
+                    </h1>
+                    <p class="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
+                        A step-by-step handbook for launching an Ubuntu 22.04 LTS AWS EC2 instance, securing SSH access, configuring the server, deploying a Node.js application, and automating everything with PM2, NGINX, Let's Encrypt, and GitHub Actions.
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8 max-w-4xl mx-auto">
+                        <div class="flex items-center space-x-2 text-teal-300">
+                            <span>🌐</span>
+                            <span class="text-sm">AWS EC2 Ubuntu Setup</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-teal-300">
+                            <span>🔒</span>
+                            <span class="text-sm">SSH Security Configuration</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-teal-300">
+                            <span>🛠️</span>
+                            <span class="text-sm">Node.js & PM2 Management</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-teal-300">
+                            <span>🔐</span>
+                            <span class="text-sm">NGINX & SSL Setup</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-teal-300">
+                            <span>⚙️</span>
+                            <span class="text-sm">GitHub Actions CI/CD</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="#prerequisites" class="btn btn--primary inline-flex items-center px-8 py-3 text-lg">
+                            Get Started 🚀
+                        </a>
+                        <a href="#troubleshooting" class="btn btn--outline inline-flex items-center px-8 py-3 text-lg">
+                            Troubleshooting 🛠️
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Table of Contents -->
+        <section class="bg-gray-800 py-12 border-b border-gray-700 transition-colors duration-300">
+            <div class="container mx-auto px-4">
+                <h2 class="text-3xl font-bold mb-8 text-center text-teal-400">📋 Table of Contents</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
+                    <a href="#prerequisites" class="toc-item bg-gray-700 hover:bg-gray-600 p-4 rounded-lg transition-all duration-200 border border-gray-600 hover:border-teal-500">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🔹</span>
+                            <span class="font-medium">Prerequisites</span>
+                        </div>
+                    </a>
+                    <a href="#launch-ec2" class="toc-item bg-gray-700 hover:bg-gray-600 p-4 rounded-lg transition-all duration-200 border border-gray-600 hover:border-teal-500">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🚀</span>
+                            <span class="font-medium">Launch EC2 Instance</span>
+                        </div>
+                    </a>
+                    <a href="#secure-ssh" class="toc-item bg-gray-700 hover:bg-gray-600 p-4 rounded-lg transition-all duration-200 border border-gray-600 hover:border-teal-500">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🔒</span>
+                            <span class="font-medium">Secure SSH Key</span>
+                        </div>
+                    </a>
+                    <a href="#update-packages" class="toc-item bg-gray-700 hover:bg-gray-600 p-4 rounded-lg transition-all duration-200 border border-gray-600 hover:border-teal-500">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🔄</span>
+                            <span class="font-medium">Update Packages</span>
+                        </div>
+                    </a>
+                    <a href="#install-nodejs" class="toc-item bg-gray-700 hover:bg-gray-600 p-4 rounded-lg transition-all duration-200 border border-gray-600 hover:border-teal-500">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🛠️</span>
+                            <span class="font-medium">Install Node.js</span>
+                        </div>
+                    </a>
+                    <a href="#clone-repo" class="toc-item bg-gray-700 hover:bg-gray-600 p-4 rounded-lg transition-all duration-200 border border-gray-600 hover:border-teal-500">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">📥</span>
+                            <span class="font-medium">Clone Repository</span>
+                        </div>
+                    </a>
+                    <a href="#kill-processes" class="toc-item bg-gray-700 hover:bg-gray-600 p-4 rounded-lg transition-all duration-200 border border-gray-600 hover:border-teal-500">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🗑️</span>
+                            <span class="font-medium">Kill Processes</span>
+                        </div>
+                    </a>
+                    <a href="#pm2-management" class="toc-item bg-gray-700 hover:bg-gray-600 p-4 rounded-lg transition-all duration-200 border border-gray-600 hover:border-teal-500">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">⚙️</span>
+                            <span class="font-medium">PM2 Management</span>
+                        </div>
+                    </a>
+                    <a href="#nginx-https" class="toc-item bg-gray-700 hover:bg-gray-600 p-4 rounded-lg transition-all duration-200 border border-gray-600 hover:border-teal-500">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🔐</span>
+                            <span class="font-medium">NGINX & HTTPS</span>
+                        </div>
+                    </a>
+                    <a href="#github-actions" class="toc-item bg-gray-700 hover:bg-gray-600 p-4 rounded-lg transition-all duration-200 border border-gray-600 hover:border-teal-500">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">⚙️</span>
+                            <span class="font-medium">GitHub Actions</span>
+                        </div>
+                    </a>
+                    <a href="#troubleshooting" class="toc-item bg-gray-700 hover:bg-gray-600 p-4 rounded-lg transition-all duration-200 border border-gray-600 hover:border-teal-500">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🛠️</span>
+                            <span class="font-medium">Troubleshooting</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Prerequisites Section -->
+        <section id="prerequisites" class="py-16 bg-gray-900 transition-colors duration-300">
+            <div class="container mx-auto px-4">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-4xl font-bold mb-8 text-teal-400 flex items-center">
+                        <span class="mr-4">🔹</span> Prerequisites
+                    </h2>
+                    
+                    <!-- Image -->
+                    <div class="mb-8">
+                        <img src="https://via.placeholder.com/600x300/1f2937/teal?text=AWS+Dashboard" alt="AWS Dashboard Screenshot" class="w-full rounded-lg border border-gray-700 shadow-lg">
+                    </div>
+                    
+                    <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                        <p class="text-gray-300 mb-6">Before starting the deployment process, ensure you have the following:</p>
+                        <ul class="space-y-4">
+                            <li class="flex items-start space-x-3">
+                                <span class="text-teal-400 mt-1">☁️</span>
+                                <span>AWS account with permissions to create EC2 instances and security groups</span>
+                            </li>
+                            <li class="flex items-start space-x-3">
+                                <span class="text-teal-400 mt-1">💻</span>
+                                <span>AWS CLI (optional) or AWS Management Console access</span>
+                            </li>
+                            <li class="flex items-start space-x-3">
+                                <span class="text-teal-400 mt-1">🖥️</span>
+                                <span>Local environment with PowerShell (Windows) or Unix shell (macOS/Linux)</span>
+                            </li>
+                            <li class="flex items-start space-x-3">
+                                <span class="text-teal-400 mt-1">🗂️</span>
+                                <span>Git installed locally and on the server</span>
+                            </li>
+                            <li class="flex items-start space-x-3">
+                                <span class="text-teal-400 mt-1">🔐</span>
+                                <span>GitHub account for repository access</span>
+                            </li>
+                            <li class="flex items-start space-x-3">
+                                <span class="text-teal-400 mt-1">🔑</span>
+                                <span>Ability to open required ports (22, 80, 443, and custom app ports)</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Launch EC2 Instance Section -->
+        <section id="launch-ec2" class="py-16 bg-gray-800 transition-colors duration-300">
+            <div class="container mx-auto px-4">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-4xl font-bold mb-8 text-teal-400 flex items-center">
+                        <span class="mr-4">🚀</span> Launch an EC2 Instance
+                    </h2>
+                    
+                    <!-- Image -->
+                    <div class="mb-8">
+                        <img src="https://via.placeholder.com/600x400/1f2937/orange?text=EC2+Console" alt="EC2 Console Screenshot" class="w-full rounded-lg border border-gray-700 shadow-lg">
+                    </div>
+                    
+                    <div class="bg-gray-900 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                        <h3 class="text-2xl font-semibold mb-6 text-white">Steps to Launch Your Instance</h3>
+                        <ol class="space-y-4 list-decimal list-inside text-gray-300">
+                            <li>Create an EC2 instance (Ubuntu 22.04 LTS)</li>
+                            <li>Create or select a Key Pair (.pem file)</li>
+                            <li>Create a Security Group allowing SSH (22), HTTP (80), HTTPS (443), and custom ports</li>
+                        </ol>
+                        
+                        <div class="mt-6">
+                            <h4 class="text-lg font-semibold mb-4 text-white">Security Group Configuration</h4>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">Configure security group inbound rules</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="# Configure security group inbound rules
+# Type: SSH, Protocol: TCP, Port: 22, Source: Your IP
+# Type: HTTP, Protocol: TCP, Port: 80, Source: 0.0.0.0/0
+# Type: Custom TCP, Protocol: TCP, Port: 3000, Source: 0.0.0.0/0">Copy</button>
+                                </div>
+                                <pre><code class="language-bash"># Configure security group inbound rules
+# Type: SSH, Protocol: TCP, Port: 22, Source: Your IP
+# Type: HTTP, Protocol: TCP, Port: 80, Source: 0.0.0.0/0
+# Type: Custom TCP, Protocol: TCP, Port: 3000, Source: 0.0.0.0/0</code></pre>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8 p-4 bg-yellow-900/30 border border-yellow-500/50 rounded-lg">
+                            <p class="text-yellow-300 flex items-start">
+                                <span class="mr-2 mt-1">⚠️</span>
+                                <strong>Security Note:</strong> Principle of least privilege: open only the ports your application absolutely needs.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Secure SSH Key Section -->
+        <section id="secure-ssh" class="py-16 bg-gray-900 transition-colors duration-300">
+            <div class="container mx-auto px-4">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-4xl font-bold mb-8 text-teal-400 flex items-center">
+                        <span class="mr-4">🔒</span> Secure Your SSH Key
+                    </h2>
+                    
+                    <!-- Image -->
+                    <div class="mb-8">
+                        <img src="https://via.placeholder.com/600x300/1f2937/blue?text=Terminal+SSH+Setup" alt="Terminal SSH Setup Screenshot" class="w-full rounded-lg border border-gray-700 shadow-lg">
+                    </div>
+                    
+                    <div class="space-y-8">
+                        <!-- Windows Commands -->
+                        <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">Windows (PowerShell)</h3>
+                            <div class="space-y-4">
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Navigate to keys directory</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="cd C:\path\to\keys">Copy</button>
+                                    </div>
+                                    <pre><code class="language-powershell">cd C:\path\to\keys</code></pre>
+                                </div>
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Remove inheritance</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code='icacls "Key-path.pem" /inheritance:r'>Copy</button>
+                                    </div>
+                                    <pre><code class="language-powershell">icacls "Key-path.pem" /inheritance:r</code></pre>
+                                </div>
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Grant read access to current user</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code='icacls "Key-path.pem" /grant:r $env:USERNAME`:R'>Copy</button>
+                                    </div>
+                                    <pre><code class="language-powershell">icacls "Key-path.pem" /grant:r $env:USERNAME`:R</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Unix Commands -->
+                        <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">macOS/Linux (Terminal)</h3>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">Set proper permissions</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="chmod 400 key.pem">Copy</button>
+                                </div>
+                                <pre><code class="language-bash">chmod 400 key.pem</code></pre>
+                            </div>
+                        </div>
+
+                        <!-- Connect to EC2 -->
+                        <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">Connect to Your EC2 Instance</h3>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">SSH connection command</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code='ssh -i "Key-path.pem" ubuntu@<EC2_PUBLIC_DNS>'>Copy</button>
+                                </div>
+                                <pre><code class="language-bash">ssh -i "Key-path.pem" ubuntu@&lt;EC2_PUBLIC_DNS&gt;</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Update Packages Section -->
+        <section id="update-packages" class="py-16 bg-gray-800 transition-colors duration-300">
+            <div class="container mx-auto px-4">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-4xl font-bold mb-8 text-teal-400 flex items-center">
+                        <span class="mr-4">🔄</span> Update & Upgrade Server Packages
+                    </h2>
+                    
+                    <!-- Image -->
+                    <div class="mb-8">
+                        <img src="https://via.placeholder.com/600x300/1f2937/green?text=Package+Update+Terminal" alt="Package Update Terminal Screenshot" class="w-full rounded-lg border border-gray-700 shadow-lg">
+                    </div>
+                    
+                    <div class="bg-gray-900 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                        <p class="text-gray-300 mb-6">Keep your server secure and up-to-date with the latest packages:</p>
+                        <div class="space-y-4">
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">Update and upgrade packages</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo apt update && sudo apt upgrade -y">Copy</button>
+                                </div>
+                                <pre><code class="language-bash">sudo apt update && sudo apt upgrade -y</code></pre>
+                            </div>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">Remove unnecessary packages (optional cleanup)</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo apt autoremove -y">Copy</button>
+                                </div>
+                                <pre><code class="language-bash">sudo apt autoremove -y</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Install Node.js Section -->
+        <section id="install-nodejs" class="py-16 bg-gray-900 transition-colors duration-300">
+            <div class="container mx-auto px-4">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-4xl font-bold mb-8 text-teal-400 flex items-center">
+                        <span class="mr-4">🛠️</span> Install Node.js (LTS)
+                    </h2>
+                    
+                    <!-- Image -->
+                    <div class="mb-8">
+                        <img src="https://via.placeholder.com/600x300/1f2937/yellow?text=Node.js+Installation" alt="Node.js Installation Screenshot" class="w-full rounded-lg border border-gray-700 shadow-lg">
+                    </div>
+                    
+                    <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                        <p class="text-gray-300 mb-6">Install the latest LTS version of Node.js:</p>
+                        <div class="space-y-4">
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">Add NodeSource repository</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -">Copy</button>
+                                </div>
+                                <pre><code class="language-bash">curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -</code></pre>
+                            </div>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">Install Node.js</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo apt install -y nodejs">Copy</button>
+                                </div>
+                                <pre><code class="language-bash">sudo apt install -y nodejs</code></pre>
+                            </div>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">Verify installation</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="node -v && npm -v">Copy</button>
+                                </div>
+                                <pre><code class="language-bash">node -v && npm -v</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Clone Repository Section -->
+        <section id="clone-repo" class="py-16 bg-gray-800 transition-colors duration-300">
+            <div class="container mx-auto px-4">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-4xl font-bold mb-8 text-teal-400 flex items-center">
+                        <span class="mr-4">📥</span> Clone Your Repository
+                    </h2>
+                    
+                    <!-- Image -->
+                    <div class="mb-8">
+                        <img src="https://via.placeholder.com/600x300/1f2937/purple?text=Git+Clone+Terminal" alt="Git Clone Terminal Screenshot" class="w-full rounded-lg border border-gray-700 shadow-lg">
+                    </div>
+                    
+                    <div class="space-y-8">
+                        <!-- Public Repository -->
+                        <div class="bg-gray-900 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">Public Repository</h3>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">Clone public repository</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="git clone <clone-URL>">Copy</button>
+                                </div>
+                                <pre><code class="language-bash">git clone &lt;clone-URL&gt;</code></pre>
+                            </div>
+                        </div>
+
+                        <!-- Private Repository -->
+                        <div class="bg-gray-900 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">Private Repository</h3>
+                            <p class="text-gray-300 mb-6">For private repositories, you'll need to set up SSH authentication:</p>
+                            <div class="space-y-4">
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Generate SSH key</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code='ssh-keygen -t ed25519 -C "your_email@example.com"'>Copy</button>
+                                    </div>
+                                    <pre><code class="language-bash">ssh-keygen -t ed25519 -C "your_email@example.com"</code></pre>
+                                </div>
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Display public key</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="cat ~/.ssh/id_ed25519.pub">Copy</button>
+                                    </div>
+                                    <pre><code class="language-bash">cat ~/.ssh/id_ed25519.pub</code></pre>
+                                </div>
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Test GitHub connection</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="ssh -T git@github.com">Copy</button>
+                                    </div>
+                                    <pre><code class="language-bash">ssh -T git@github.com</code></pre>
+                                </div>
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Clone private repository</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="git clone git@github.com:username/repo.git">Copy</button>
+                                    </div>
+                                    <pre><code class="language-bash">git clone git@github.com:username/repo.git</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Kill Processes Section -->
+        <section id="kill-processes" class="py-16 bg-gray-900 transition-colors duration-300">
+            <div class="container mx-auto px-4">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-4xl font-bold mb-8 text-teal-400 flex items-center">
+                        <span class="mr-4">🗑️</span> Kill Processes on a Port
+                    </h2>
+                    
+                    <!-- Image -->
+                    <div class="mb-8">
+                        <img src="https://via.placeholder.com/600x300/1f2937/red?text=Process+Management" alt="Process Management Terminal Screenshot" class="w-full rounded-lg border border-gray-700 shadow-lg">
+                    </div>
+                    
+                    <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                        <p class="text-gray-300 mb-6">Sometimes you need to free up a port by killing running processes:</p>
+                        <div class="space-y-4">
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">List processes on port 3000</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo lsof -i :3000">Copy</button>
+                                </div>
+                                <pre><code class="language-bash">sudo lsof -i :3000</code></pre>
+                            </div>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">Kill specific process by PID</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo kill -9 <PID>">Copy</button>
+                                </div>
+                                <pre><code class="language-bash">sudo kill -9 &lt;PID&gt;</code></pre>
+                            </div>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">Kill all processes on port 3000 (one-liner)</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo kill -9 $(sudo lsof -t -i:3000)">Copy</button>
+                                </div>
+                                <pre><code class="language-bash">sudo kill -9 $(sudo lsof -t -i:3000)</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PM2 Management Section -->
+        <section id="pm2-management" class="py-16 bg-gray-800 transition-colors duration-300">
+            <div class="container mx-auto px-4">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-4xl font-bold mb-8 text-teal-400 flex items-center">
+                        <span class="mr-4">⚙️</span> Manage Your App with PM2
+                    </h2>
+                    
+                    <!-- Image -->
+                    <div class="mb-8">
+                        <img src="https://via.placeholder.com/600x400/1f2937/cyan?text=PM2+Dashboard" alt="PM2 Dashboard Screenshot" class="w-full rounded-lg border border-gray-700 shadow-lg">
+                    </div>
+                    
+                    <div class="space-y-8">
+                        <!-- Install PM2 -->
+                        <div class="bg-gray-900 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">Install PM2</h3>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">Install PM2 globally</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo npm install -g pm2">Copy</button>
+                                </div>
+                                <pre><code class="language-bash">sudo npm install -g pm2</code></pre>
+                            </div>
+                        </div>
+
+                        <!-- PM2 Commands -->
+                        <div class="bg-gray-900 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">PM2 Commands</h3>
+                            <div class="space-y-6">
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div class="space-y-4">
+                                        <div class="code-block">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <span class="text-sm text-gray-400">Start app</span>
+                                                <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="pm2 start index.js --name my-app">Copy</button>
+                                            </div>
+                                            <pre><code class="language-bash">pm2 start index.js --name my-app</code></pre>
+                                        </div>
+                                        <div class="code-block">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <span class="text-sm text-gray-400">List processes</span>
+                                                <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="pm2 list">Copy</button>
+                                            </div>
+                                            <pre><code class="language-bash">pm2 list</code></pre>
+                                        </div>
+                                        <div class="code-block">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <span class="text-sm text-gray-400">View logs</span>
+                                                <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="pm2 logs">Copy</button>
+                                            </div>
+                                            <pre><code class="language-bash">pm2 logs</code></pre>
+                                        </div>
+                                        <div class="code-block">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <span class="text-sm text-gray-400">Stop app</span>
+                                                <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="pm2 stop my-app">Copy</button>
+                                            </div>
+                                            <pre><code class="language-bash">pm2 stop my-app</code></pre>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-4">
+                                        <div class="code-block">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <span class="text-sm text-gray-400">Remove from PM2 list</span>
+                                                <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="pm2 delete my-app">Copy</button>
+                                            </div>
+                                            <pre><code class="language-bash">pm2 delete my-app</code></pre>
+                                        </div>
+                                        <div class="code-block">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <span class="text-sm text-gray-400">Persist process list</span>
+                                                <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="pm2 save">Copy</button>
+                                            </div>
+                                            <pre><code class="language-bash">pm2 save</code></pre>
+                                        </div>
+                                        <div class="code-block">
+                                            <div class="flex justify-between items-center mb-2">
+                                                <span class="text-sm text-gray-400">Generate startup script</span>
+                                                <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="pm2 startup">Copy</button>
+                                            </div>
+                                            <pre><code class="language-bash">pm2 startup</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- NGINX & HTTPS Section -->
+        <section id="nginx-https" class="py-16 bg-gray-900 transition-colors duration-300">
+            <div class="container mx-auto px-4">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-4xl font-bold mb-8 text-teal-400 flex items-center">
+                        <span class="mr-4">🔐</span> Enable HTTPS with NGINX & Certbot
+                    </h2>
+                    
+                    <!-- Image -->
+                    <div class="mb-8">
+                        <img src="https://via.placeholder.com/600x350/1f2937/indigo?text=NGINX+Configuration" alt="NGINX Configuration Screenshot" class="w-full rounded-lg border border-gray-700 shadow-lg">
+                    </div>
+                    
+                    <div class="space-y-8">
+                        <!-- Install and Configure NGINX -->
+                        <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">Install and Configure NGINX</h3>
+                            <div class="space-y-4">
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Install NGINX</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo apt install -y nginx">Copy</button>
+                                    </div>
+                                    <pre><code class="language-bash">sudo apt install -y nginx</code></pre>
+                                </div>
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Allow NGINX through firewall</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo ufw allow 'Nginx Full'">Copy</button>
+                                    </div>
+                                    <pre><code class="language-bash">sudo ufw allow 'Nginx Full'</code></pre>
+                                </div>
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Remove default configuration</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo rm /etc/nginx/sites-enabled/default">Copy</button>
+                                    </div>
+                                    <pre><code class="language-bash">sudo rm /etc/nginx/sites-enabled/default</code></pre>
+                                </div>
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Create new site configuration</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo nano /etc/nginx/sites-available/myapp">Copy</button>
+                                    </div>
+                                    <pre><code class="language-bash">sudo nano /etc/nginx/sites-available/myapp</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- NGINX Configuration -->
+                        <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">NGINX Configuration</h3>
+                            <p class="text-gray-300 mb-4">Add this configuration to your NGINX site file:</p>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">NGINX site configuration</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="server {
+    listen 80;
+    server_name yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}">Copy</button>
+                                </div>
+                                <pre><code class="language-nginx">server {
+    listen 80;
+    server_name yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}</code></pre>
+                            </div>
+                        </div>
+
+                        <!-- SSL/TLS with Certbot -->
+                        <div class="bg-gray-800 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">SSL/TLS with Let's Encrypt</h3>
+                            <div class="space-y-4">
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Install Certbot</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo apt install -y certbot python3-certbot-nginx">Copy</button>
+                                    </div>
+                                    <pre><code class="language-bash">sudo apt install -y certbot python3-certbot-nginx</code></pre>
+                                </div>
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Obtain SSL certificate</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo certbot --nginx -d yourdomain.com">Copy</button>
+                                    </div>
+                                    <pre><code class="language-bash">sudo certbot --nginx -d yourdomain.com</code></pre>
+                                </div>
+                                <div class="code-block">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-400">Test auto-renewal</span>
+                                        <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="sudo certbot renew --dry-run">Copy</button>
+                                    </div>
+                                    <pre><code class="language-bash">sudo certbot renew --dry-run</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GitHub Actions Section -->
+        <section id="github-actions" class="py-16 bg-gray-800 transition-colors duration-300">
+            <div class="container mx-auto px-4">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-4xl font-bold mb-8 text-teal-400 flex items-center">
+                        <span class="mr-4">⚙️</span> CI/CD Deployment with GitHub Actions
+                    </h2>
+                    
+                    <!-- Image -->
+                    <div class="mb-8">
+                        <img src="https://via.placeholder.com/600x350/1f2937/pink?text=GitHub+Actions+Workflow" alt="GitHub Actions Workflow Screenshot" class="w-full rounded-lg border border-gray-700 shadow-lg">
+                    </div>
+                    
+                    <div class="space-y-8">
+                        <!-- Generate SSH Key -->
+                        <div class="bg-gray-900 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">Generate SSH Key for Deployment</h3>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">Generate RSA key for deployment</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code='ssh-keygen -t rsa -b 4096 -C "your_email@example.com"'>Copy</button>
+                                </div>
+                                <pre><code class="language-bash">ssh-keygen -t rsa -b 4096 -C "your_email@example.com"</code></pre>
+                            </div>
+                        </div>
+
+                        <!-- GitHub Secrets -->
+                        <div class="bg-gray-900 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">Required GitHub Secrets</h3>
+                            <p class="text-gray-300 mb-6">Add these secrets to your GitHub repository settings (Settings → Secrets and variables → Actions):</p>
+                            <div class="space-y-4">
+                                <div class="bg-gray-800 p-4 rounded border border-gray-600">
+                                    <h4 class="font-semibold text-teal-300 mb-2">EC2_SSH_KEY</h4>
+                                    <p class="text-sm text-gray-400">Contents of ec2-deploy-key (private key)</p>
+                                </div>
+                                <div class="bg-gray-800 p-4 rounded border border-gray-600">
+                                    <h4 class="font-semibold text-teal-300 mb-2">EC2_USER</h4>
+                                    <p class="text-sm text-gray-400">ubuntu</p>
+                                </div>
+                                <div class="bg-gray-800 p-4 rounded border border-gray-600">
+                                    <h4 class="font-semibold text-teal-300 mb-2">EC2_HOST</h4>
+                                    <p class="text-sm text-gray-400">Your EC2 instance public IP</p>
+                                </div>
+                                <div class="bg-gray-800 p-4 rounded border border-gray-600">
+                                    <h4 class="font-semibold text-teal-300 mb-2">TARGET_DIR</h4>
+                                    <p class="text-sm text-gray-400">/home/ubuntu/code/projectRepo</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Workflow File -->
+                        <div class="bg-gray-900 rounded-lg p-8 border border-gray-700 transition-colors duration-300">
+                            <h3 class="text-2xl font-semibold mb-6 text-white">GitHub Actions Workflow</h3>
+                            <p class="text-gray-300 mb-4">Create <code>.github/workflows/deploy.yml</code> in your repository:</p>
+                            <div class="code-block">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm text-gray-400">GitHub Actions workflow file</span>
+                                    <button class="copy-btn text-teal-400 hover:text-teal-300 text-sm" data-code="name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+      - name: Deploy to EC2
+        run: |
+          ssh -i ~/.ssh/ec2-deploy-key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            cd ${{ secrets.TARGET_DIR }}
+            git pull origin main
+            npm install
+            pm2 restart all || pm2 start index.js --name my-app
+          EOF">Copy</button>
+                                </div>
+                                <pre><code class="language-yaml">name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+      - name: Deploy to EC2
+        run: |
+          ssh -i ~/.ssh/ec2-deploy-key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            cd ${{ secrets.TARGET_DIR }}
+            git pull origin main
+            npm install
+            pm2 restart all || pm2 start index.js --name my-app
+          EOF</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Troubleshooting Section -->
+        <section id="troubleshooting" class="py-16 bg-gray-900 transition-colors duration-300">
+            <div class="container mx-auto px-4">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-4xl font-bold mb-8 text-teal-400 flex items-center">
+                        <span class="mr-4">🛠️</span> Troubleshooting
+                    </h2>
+                    
+                    <!-- Image -->
+                    <div class="mb-8">
+                        <img src="https://via.placeholder.com/600x300/1f2937/orange?text=Debug+Terminal" alt="Debug Terminal Screenshot" class="w-full rounded-lg border border-gray-700 shadow-lg">
+                    </div>
+                    
+                    <!-- Search Box -->
+                    <div class="mb-8">
+                        <div class="relative">
+                            <input type="text" id="troubleshooting-search" placeholder="Search for issues..." class="form-control pl-10 transition-colors duration-300">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Troubleshooting Table -->
+                    <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden transition-colors duration-300">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-700">
+                                    <tr>
+                                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-200">Issue</th>
+                                        <th class="px-6 py-4 text-left text-sm font-semibold text-gray-200">Resolution</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="troubleshooting-table" class="divide-y divide-gray-700">
+                                    <tr class="troubleshooting-row hover:bg-gray-700/50 transition-colors">
+                                        <td class="px-6 py-4 text-sm text-gray-300">SSH connection refused</td>
+                                        <td class="px-6 py-4 text-sm text-gray-300">Ensure port 22 is open in both AWS security group and UFW, and your IP is whitelisted</td>
+                                    </tr>
+                                    <tr class="troubleshooting-row hover:bg-gray-700/50 transition-colors">
+                                        <td class="px-6 py-4 text-sm text-gray-300">Permission denied (SSH key)</td>
+                                        <td class="px-6 py-4 text-sm text-gray-300">File mode must be 400 (Linux/macOS) or restricted via icacls (Windows)</td>
+                                    </tr>
+                                    <tr class="troubleshooting-row hover:bg-gray-700/50 transition-colors">
+                                        <td class="px-6 py-4 text-sm text-gray-300">App not running after reboot</td>
+                                        <td class="px-6 py-4 text-sm text-gray-300">Execute pm2 startup then pm2 save so processes respawn automatically</td>
+                                    </tr>
+                                    <tr class="troubleshooting-row hover:bg-gray-700/50 transition-colors">
+                                        <td class="px-6 py-4 text-sm text-gray-300">NGINX configuration errors</td>
+                                        <td class="px-6 py-4 text-sm text-gray-300">Run sudo nginx -t to validate, fix errors, then sudo systemctl reload nginx</td>
+                                    </tr>
+                                    <tr class="troubleshooting-row hover:bg-gray-700/50 transition-colors">
+                                        <td class="px-6 py-4 text-sm text-gray-300">Let's Encrypt fails</td>
+                                        <td class="px-6 py-4 text-sm text-gray-300">Confirm your domain's A-record points to the EC2 IP and ports 80/443 are open</td>
+                                    </tr>
+                                    <tr class="troubleshooting-row hover:bg-gray-700/50 transition-colors">
+                                        <td class="px-6 py-4 text-sm text-gray-300">GitHub Actions cannot connect</td>
+                                        <td class="px-6 py-4 text-sm text-gray-300">Check EC2_SSH_KEY formatting, correct EC2_HOST, and ensure port 22 is open to GitHub ranges</td>
+                                    </tr>
+                                    <tr class="troubleshooting-row hover:bg-gray-700/50 transition-colors">
+                                        <td class="px-6 py-4 text-sm text-gray-300">Port appears closed externally</td>
+                                        <td class="px-6 py-4 text-sm text-gray-300">Verify both the AWS security group and sudo ufw status include the required port</td>
+                                    </tr>
+                                    <tr class="troubleshooting-row hover:bg-gray-700/50 transition-colors">
+                                        <td class="px-6 py-4 text-sm text-gray-300">Node.js version conflicts</td>
+                                        <td class="px-6 py-4 text-sm text-gray-300">Use nvm to manage Node.js versions: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 border-t border-gray-700 py-12 transition-colors duration-300">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto text-center">
+                <div class="mb-8">
+                    <h3 class="text-2xl font-bold text-teal-400 mb-4">🚀 Project Deployment Guide</h3>
+                    <p class="text-gray-400">Everything you need to deploy your Node.js applications on AWS EC2</p>
+                </div>
+                <div class="flex flex-col sm:flex-row justify-center items-center gap-6 mb-8">
+                    <a href="https://aws.amazon.com/ec2/" target="_blank" class="text-gray-400 hover:text-teal-400 transition-colors">AWS EC2 Documentation</a>
+                    <a href="https://nodejs.org/" target="_blank" class="text-gray-400 hover:text-teal-400 transition-colors">Node.js Official Site</a>
+                    <a href="https://pm2.keymetrics.io/" target="_blank" class="text-gray-400 hover:text-teal-400 transition-colors">PM2 Documentation</a>
+                    <a href="https://nginx.org/" target="_blank" class="text-gray-400 hover:text-teal-400 transition-colors">NGINX Documentation</a>
+                    <a href="https://github.com/YourUsername/Project-Deployment-Guide" target="_blank" class="text-gray-400 hover:text-teal-400 transition-colors">View on GitHub</a>
+                </div>
+                <div class="text-sm text-gray-500">
+                    <p>&copy; 2025 Project Deployment Guide. Built with HTML, CSS, and JavaScript.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
